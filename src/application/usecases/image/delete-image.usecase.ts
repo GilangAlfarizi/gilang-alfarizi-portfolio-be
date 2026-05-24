@@ -1,5 +1,6 @@
 import { ImageNotFoundError } from '@domain/common';
 import { IMAGE_REPOSITORY, ImageRepository } from '@domain/image';
+import { CacheInvalidationService } from '@infrastructure/cache';
 import { Inject, Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -7,6 +8,7 @@ export class DeleteImageUseCase {
   constructor(
     @Inject(IMAGE_REPOSITORY)
     private readonly imageRepository: ImageRepository,
+    private readonly cacheInvalidation: CacheInvalidationService,
   ) {}
 
   async execute(id: number): Promise<void> {
@@ -16,5 +18,6 @@ export class DeleteImageUseCase {
     }
 
     await this.imageRepository.delete(id);
+    await this.cacheInvalidation.invalidateImage(image);
   }
 }

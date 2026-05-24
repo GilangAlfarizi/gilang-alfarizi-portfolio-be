@@ -8,7 +8,19 @@ class Envs {
   imagekitUrlEndpoint!: string;
   redisUrl?: string;
   redisToken?: string;
+  cacheTtlProjectsList!: number;
+  cacheTtlProjectDetail!: number;
+  cacheTtlImages!: number;
+  corsOrigins!: string[];
 }
+
+const parseCorsOrigins = (value?: string): string[] => {
+  const raw = value?.trim() || 'http://localhost:3000';
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+};
 
 export const validationSchema = Joi.object({
   port: Joi.number().required(),
@@ -18,6 +30,10 @@ export const validationSchema = Joi.object({
   imagekitUrlEndpoint: Joi.string().required(),
   redisUrl: Joi.string().optional().allow(''),
   redisToken: Joi.string().optional().allow(''),
+  cacheTtlProjectsList: Joi.number().default(300),
+  cacheTtlProjectDetail: Joi.number().default(600),
+  cacheTtlImages: Joi.number().default(300),
+  corsOrigins: Joi.array().items(Joi.string()).min(1),
 });
 
 export const envsConfig = (): Envs => {
@@ -29,6 +45,10 @@ export const envsConfig = (): Envs => {
     imagekitUrlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT!,
     redisUrl: process.env.REDIS_URL,
     redisToken: process.env.REDIS_TOKEN,
+    cacheTtlProjectsList: Number(process.env.CACHE_TTL_PROJECTS_LIST ?? 300),
+    cacheTtlProjectDetail: Number(process.env.CACHE_TTL_PROJECT_DETAIL ?? 600),
+    cacheTtlImages: Number(process.env.CACHE_TTL_IMAGES ?? 300),
+    corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   });
 
   if (error) throw new Error(error.message);

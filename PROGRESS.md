@@ -1,7 +1,7 @@
 # Portfolio v2 Backend — Progress & Roadmap
 
 > **Living document.** Revisit and update this file whenever architecture decisions change, phases complete, or new requirements appear.  
-> **Last reviewed:** 2026-05-24 (Phase 2–3 complete, Option B uploads)
+> **Last reviewed:** 2026-05-24 (Phase 4–5: Upstash cache, CORS, Vercel)
 
 ---
 
@@ -11,16 +11,18 @@
 |------|--------|-------|
 | NestJS + clean-arch folder layout | Done | Path aliases in `tsconfig.json` |
 | Swagger (`/docs`) | Done | `main.ts` |
-| Env validation + `ConfigModule` | Done | `DATABASE_URL`, `PORT` required; ImageKit/Redis optional until Phases 3–4 |
+| Env validation + `ConfigModule` | Done | See `.env.example` |
 | Global `ValidationPipe` | Done | `main.ts` |
 | Health check | Done | `GET /health` |
 | Prisma + Supabase | Done | `database/schema.prisma` (Prisma 6); manual schema verified against live DB |
-| Domain layer | Partial | `ProjectListItem`, `ProjectRepository` |
-| Data / repository layer | Partial | `ProjectPrismaRepository` |
+| Domain layer | Done | Project + image models, repository ports |
+| Data / repository layer | Done | Prisma repositories |
 | Project API | Done | Full CRUD at `/project` |
 | Image API | Done | CRUD + multipart upload (Option B) |
 | ImageKit | Done | Server-side upload via `imagekit` SDK |
-| Redis caching | Not started | Env keys optional until Phase 4 |
+| Redis caching (Upstash) | Done | `@upstash/redis`; cache-aside in read use cases |
+| CORS | Done | `CORS_ORIGINS` (mock `http://localhost:3000`) |
+| Vercel deploy | Done | `api/index.ts` + `vercel.json` |
 
 ---
 
@@ -112,19 +114,23 @@ Prisma: use `@map("snake_case")` on fields and `@@map("table_name")` on models w
 
 ---
 
-## Environment variables (planned)
+## Environment variables
 
-| Variable | Phase | Required | Purpose |
-|----------|-------|----------|---------|
-| `DATABASE_URL` | 1 | Yes | Supabase Postgres (exists) |
-| `PORT` | 0 | Yes | HTTP port (exists) |
-| `REDIS_URL` | 4 | Phase 4 | Cache |
-| `REDIS_TOKEN` | 4 | Phase 4 | Upstash / managed Redis |
-| `IMAGEKIT_PUBLIC_KEY` | 3 | Phase 3 | Upload client / server |
-| `IMAGEKIT_PRIVATE_KEY` | 3 | Phase 3 | Server-side upload |
-| `IMAGEKIT_URL_ENDPOINT` | 3 | Phase 3 | CDN base URL |
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `DATABASE_URL` | Yes | Supabase Postgres |
+| `PORT` | Yes (local) | HTTP port; Vercel sets automatically |
+| `IMAGEKIT_PUBLIC_KEY` | Yes | ImageKit |
+| `IMAGEKIT_PRIVATE_KEY` | Yes | ImageKit |
+| `IMAGEKIT_URL_ENDPOINT` | Yes | ImageKit CDN base |
+| `REDIS_URL` | Recommended | Upstash REST URL — cache disabled if omitted |
+| `REDIS_TOKEN` | Recommended | Upstash REST token |
+| `CACHE_TTL_PROJECTS_LIST` | No | Default `300` (seconds) |
+| `CACHE_TTL_PROJECT_DETAIL` | No | Default `600` |
+| `CACHE_TTL_IMAGES` | No | Default `300` |
+| `CORS_ORIGINS` | No | Comma-separated; default `http://localhost:3000` — **set to deployed frontend URL** |
 
-`ConfigModule` + `envsConfig()` wired in `AppModule`. ImageKit/Redis vars are **optional** until their phases.
+Copy `.env.example` → `.env` locally; add the same keys in the Vercel project dashboard.
 
 ---
 
@@ -327,17 +333,17 @@ No admin UI on the frontend — the API accepts `multipart/form-data` so you can
 
 **Goal:** Faster repeated reads for portfolio visitors; correct invalidation on mutations.
 
-**Status:** Not started
+**Status:** Complete
 
 #### Sub-tasks
 
-- [ ] Install `ioredis` or `@nestjs/cache-manager` + Redis store
-- [ ] `RedisModule` + connection from `REDIS_URL`
-- [ ] Cache key convention: e.g. `portfolio:projects:list`, `portfolio:project:{id}`, `portfolio:project:{id}:images`
-- [ ] Cache-aside in read use cases **or** interceptor on `GET` routes (prefer use case for explicit keys)
-- [ ] TTL defaults (e.g. 300s list, 600s detail) — env-configurable
-- [ ] Invalidation on `POST/PATCH/DELETE` for projects and images
-- [ ] Extend health check to ping Redis
+- [x] `@upstash/redis` via global `CacheModule` (`CacheService`)
+- [x] Connection from `REDIS_URL` + `REDIS_TOKEN` (graceful no-op if missing)
+- [x] Keys: `portfolio:projects:list`, `portfolio:project:{id}`, `portfolio:project:{id}:images`, `portfolio:image:{id}`, `portfolio:image:slug:{slug}`
+- [x] Cache-aside in all **read** use cases
+- [x] TTL via `CACHE_TTL_*` env vars
+- [x] `CacheInvalidationService` on all writes
+- [x] `GET /health` returns `{ status, redis: up|down|disabled }`
 
 #### Architecture notes
 
@@ -367,21 +373,30 @@ Write: DB → invalidate matching keys (prefix scan or explicit list)
 
 ### Phase 5 — Hardening & production readiness
 
-**Goal:** Safe public deployment and operability.
+**Goal:** Deployable on Vercel with frontend CORS. Auth/E2E explicitly out of scope.
+
+**Status:** Complete (scoped)
 
 #### Sub-tasks
 
-- [ ] Admin authentication (API key, Supabase JWT, or Nest Passport) for write routes
-- [ ] CORS configuration for frontend origin
-- [ ] Global exception filter + consistent error body `{ statusCode, message, error }`
-- [ ] E2E tests (supertest) for critical flows
-- [ ] CI: lint, test, build
-- [ ] Deployment notes (Railway, Fly, Render, etc.)
+- [ ] Admin authentication — **skipped** (not required)
+- [x] CORS in `configureApp()` — `CORS_ORIGINS` (mock: `http://localhost:3000`)
+- [x] `DomainExceptionFilter` for domain 404/409
+- [ ] E2E tests — **skipped**
+- [ ] CI — **skipped**
+- [x] **Vercel:** `api/index.ts` serverless handler, `vercel.json`, `npm run vercel-build`
+
+#### Vercel deploy checklist
+
+1. Connect repo to Vercel; framework preset **Other**.
+2. Set env vars from `.env.example` (including Upstash `REDIS_*`, Supabase `DATABASE_URL`, ImageKit).
+3. Set `CORS_ORIGINS` to your production frontend URL (e.g. `https://your-portfolio.vercel.app`).
+4. Deploy — all routes rewrite to `/api`; Swagger at `/docs`.
 
 #### Future enhancements
 
-- OpenAPI client generation for frontend.
-- Observability (Sentry, metrics).
+- Auth for write routes if the API becomes public.
+- OpenAPI client generation, Sentry, CI.
 
 ---
 
@@ -429,6 +444,7 @@ Update this section when frontend stack (Next.js, etc.) and animation library ar
 | 2026-05-24 | Initial `PROGRESS.md` created from codebase audit |
 | 2026-05-24 | Phase 0–1 done; `GET /project` live; Int PKs; Prisma 6 schema |
 | 2026-05-24 | Phase 2–3 done; Option B multipart upload; full project + image CRUD |
+| 2026-05-24 | Phase 4–5: Upstash cache, CORS, Vercel serverless entry |
 
 ### How to update this file (agent / developer)
 
@@ -446,16 +462,13 @@ Update this section when frontend stack (Next.js, etc.) and animation library ar
 2. **Image slug uniqueness** — global vs per project (check Supabase constraints).
 3. **Delete project** — **cascade images** (Prisma `onDelete: Cascade` on `images.project_id`)
 4. ~~**Image upload path**~~ — **Option B** (server multipart upload); no admin frontend required.
-5. **Auth for writes** — now vs Phase 5.
-6. **Admin vs public** — single deployment or split environments.
+5. ~~**Auth for writes**~~ — deferred (not required).
+6. **CORS** — set `CORS_ORIGINS` when frontend URL is known.
 
 ---
 
 ## Suggested implementation order (current best strategy)
 
-```
-Phase 4 (Redis on read-heavy endpoints)
-  → Phase 5 (auth, CORS, E2E, deploy)
-```
+Core backend phases **0–5 are complete** for the current scope.
 
-**Next actionable step:** Redis cache-aside on `GET /project`, `GET /project/:id`, and image list; invalidate on writes.
+**Optional next steps:** `file_id` column + ImageKit delete on image remove; global `/api` prefix; observability.

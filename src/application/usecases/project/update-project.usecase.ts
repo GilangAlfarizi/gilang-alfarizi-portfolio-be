@@ -6,12 +6,14 @@ import {
   ProjectRepository,
   UpdateProjectInput,
 } from '@domain/project';
+import { CacheInvalidationService } from '@infrastructure/cache';
 
 @Injectable()
 export class UpdateProjectUseCase {
   constructor(
     @Inject(PROJECT_REPOSITORY)
     private readonly projectRepository: ProjectRepository,
+    private readonly cacheInvalidation: CacheInvalidationService,
   ) {}
 
   async execute(id: number, input: UpdateProjectInput): Promise<Project> {
@@ -19,6 +21,8 @@ export class UpdateProjectUseCase {
     if (!exists) {
       throw new ProjectNotFoundError(id);
     }
-    return this.projectRepository.update(id, input);
+    const project = await this.projectRepository.update(id, input);
+    await this.cacheInvalidation.invalidateProject(id);
+    return project;
   }
 }

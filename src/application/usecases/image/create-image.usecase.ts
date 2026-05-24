@@ -1,6 +1,7 @@
 import { ProjectNotFoundError, SlugConflictError } from '@domain/common';
 import { Image, IMAGE_REPOSITORY, ImageRepository } from '@domain/image';
 import { PROJECT_REPOSITORY, ProjectRepository } from '@domain/project';
+import { CacheInvalidationService } from '@infrastructure/cache';
 import { ImageKitService } from '@infrastructure/imagekit';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -20,6 +21,7 @@ export class CreateImageUseCase {
     @Inject(PROJECT_REPOSITORY)
     private readonly projectRepository: ProjectRepository,
     private readonly imageKitService: ImageKitService,
+    private readonly cacheInvalidation: CacheInvalidationService,
   ) {}
 
   async execute(command: CreateImageCommand): Promise<Image> {
@@ -38,12 +40,14 @@ export class CreateImageUseCase {
     const upload = await this.imageKitService.upload(file, fileName);
 
     try {
-      return await this.imageRepository.create({
+      const image = await this.imageRepository.create({
         slug,
         description: description ?? null,
         projectId,
         image: upload.url,
       });
+      await this.cacheInvalidation.invalidateImage(image);
+      return image;
     } catch (error) {
       await this.imageKitService.delete(upload.fileId).catch(() => undefined);
       throw error;

@@ -1,4 +1,5 @@
 import { envsConfig } from '@infrastructure/envs';
+import { CacheModule } from '@infrastructure/cache';
 import { DomainExceptionFilter } from '@infrastructure/filters';
 import { PrismaModule } from '@infrastructure/prisma';
 import { Module } from '@nestjs/common';
@@ -15,6 +16,7 @@ import { ProjectModule } from '@presentation/project/project.module';
       isGlobal: true,
       load: [envsConfig],
     }),
+    CacheModule,
     PrismaModule,
     HealthModule,
     ProjectModule,

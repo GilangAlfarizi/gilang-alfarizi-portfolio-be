@@ -1,13 +1,21 @@
+import { CacheService } from '@infrastructure/cache';
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  @ApiOkResponse({ schema: { example: { status: 'ok' } } })
+  constructor(private readonly cacheService: CacheService) {}
+
+  @ApiOkResponse({
+    schema: {
+      example: { status: 'ok', redis: 'up' },
+    },
+  })
   @HttpCode(HttpStatus.OK)
   @Get()
-  getHealth() {
-    return { status: 'ok' };
+  async getHealth() {
+    const redis = await this.cacheService.ping();
+    return { status: 'ok', redis };
   }
 }
