@@ -26,5 +26,11 @@ export async function configureApp(app: INestApplication): Promise<void> {
     .build();
 
   const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('docs', app, document, {
+    customCssUrl: 'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css',
+    customJs: [
+      'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js',
+      'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js',
+    ],
+  });
 }
