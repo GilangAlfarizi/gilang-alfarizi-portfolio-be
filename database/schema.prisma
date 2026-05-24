@@ -35,7 +35,7 @@ model Certificate {
   id         Int       @id @default(autoincrement())
   title      String
   issuer     String?
-  url        String?
+  image      String?
   validUntil DateTime? @map("valid_until")
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")

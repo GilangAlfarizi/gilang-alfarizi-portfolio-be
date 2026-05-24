@@ -7,7 +7,7 @@ export class CertificateMapper {
       id: row.id,
       title: row.title,
       issuer: row.issuer,
-      url: row.url,
+      image: row.image,
       validUntil: row.validUntil,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

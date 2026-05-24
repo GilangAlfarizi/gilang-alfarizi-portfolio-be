@@ -11,7 +11,7 @@ export class GetCertificatesResponseDto {
   issuer: string | null;
 
   @ApiPropertyOptional({ example: 'https://www.credly.com/badges/example' })
-  url: string | null;
+  image: string | null;
 
   @ApiPropertyOptional({ example: '2026-12-31T00:00:00.000Z' })
   validUntil: Date | null;

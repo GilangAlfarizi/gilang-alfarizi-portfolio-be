@@ -8,7 +8,7 @@ export class CertificateMapper {
       id: certificate.id,
       title: certificate.title,
       issuer: certificate.issuer,
-      url: certificate.url,
+      image: certificate.image,
       validUntil: certificate.validUntil,
       createdAt: certificate.createdAt,
       updatedAt: certificate.updatedAt,
