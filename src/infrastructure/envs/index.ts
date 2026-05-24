@@ -11,6 +11,8 @@ class Envs {
   cacheTtlProjectsList!: number;
   cacheTtlProjectDetail!: number;
   cacheTtlImages!: number;
+  cacheTtlCertificates!: number;
+  cacheTtlSkills!: number;
   corsOrigins!: string[];
 }
 
@@ -33,6 +35,8 @@ export const validationSchema = Joi.object({
   cacheTtlProjectsList: Joi.number().default(300),
   cacheTtlProjectDetail: Joi.number().default(600),
   cacheTtlImages: Joi.number().default(300),
+  cacheTtlCertificates: Joi.number().default(600),
+  cacheTtlSkills: Joi.number().default(600),
   corsOrigins: Joi.array().items(Joi.string()).min(1),
 });
 
@@ -48,6 +52,8 @@ export const envsConfig = (): Envs => {
     cacheTtlProjectsList: Number(process.env.CACHE_TTL_PROJECTS_LIST ?? 300),
     cacheTtlProjectDetail: Number(process.env.CACHE_TTL_PROJECT_DETAIL ?? 600),
     cacheTtlImages: Number(process.env.CACHE_TTL_IMAGES ?? 300),
+    cacheTtlCertificates: Number(process.env.CACHE_TTL_CERTIFICATES ?? 600),
+    cacheTtlSkills: Number(process.env.CACHE_TTL_SKILLS ?? 600),
     corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   });
 

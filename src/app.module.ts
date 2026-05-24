@@ -7,8 +7,10 @@ import { APP_FILTER, APP_INTERCEPTOR, RouterModule } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ResponseInterceptor } from '@infrastructure/interceptors';
 import { HealthModule } from '@presentation/health/health.module';
+import { CertificateModule } from '@presentation/certificate/certificate.module';
 import { ImageModule } from '@presentation/image/image.module';
 import { ProjectModule } from '@presentation/project/project.module';
+import { SkillModule } from '@presentation/skill/skill.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { ProjectModule } from '@presentation/project/project.module';
     HealthModule,
     ProjectModule,
     ImageModule,
+    CertificateModule,
+    SkillModule,
     RouterModule.register([
       {
         path: '/project',

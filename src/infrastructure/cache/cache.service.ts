@@ -27,6 +27,8 @@ export class CacheService {
       projectsList: env.cacheTtlProjectsList,
       projectDetail: env.cacheTtlProjectDetail,
       images: env.cacheTtlImages,
+      certificates: env.cacheTtlCertificates,
+      skills: env.cacheTtlSkills,
     };
   }
 

@@ -1,7 +1,7 @@
 # Portfolio v2 Backend — Progress & Roadmap
 
 > **Living document.** Revisit and update this file whenever architecture decisions change, phases complete, or new requirements appear.  
-> **Last reviewed:** 2026-05-24 (Phase 6 planned: certificates & skills read APIs)
+> **Last reviewed:** 2026-05-24 (Phase 6 complete)
 
 ---
 
@@ -23,6 +23,8 @@
 | Redis caching (Upstash) | Done | `@upstash/redis`; cache-aside in read use cases |
 | CORS | Done | `CORS_ORIGINS` (mock `http://localhost:3000`) |
 | Vercel deploy | Done | `api/index.ts` + `vercel.json` |
+| Certificate API | Done | `GET /certificate` — read-only; Redis cached |
+| Skills API | Done | `GET /skill` (+ optional `?type=`) — `icon` = frontend key |
 
 ---
 
@@ -431,6 +433,136 @@ Write: DB → invalidate matching keys (prefix scan or explicit list)
 
 ---
 
+### Phase 6 — Certificates & Skills (read-only GET)
+
+**Goal:** Serve certificate and skill lists for the portfolio frontend. **No write endpoints** — you maintain data directly in Supabase.
+
+**Status:** Complete
+
+#### Scope (this phase)
+
+| Area | In scope | Out of scope |
+|------|----------|--------------|
+| Certificates | `GET` list all | `GET :id`, `POST` / `PATCH` / `DELETE` |
+| Skills | `GET` list all (include `icon`, `type`) | Writes, icon file upload, grouping by project |
+| Caching | Cache-aside on both list endpoints | — |
+| Auth | — | Admin auth (unchanged) |
+
+#### Sub-tasks
+
+**Shared / Prisma**
+
+- [x] Confirm `Certificate` and `Skill` models in `database/schema.prisma`
+- [x] `npx prisma generate`
+
+**Certificates**
+
+- [x] `src/domain/certificate/` — entity + `CertificateRepository.findAll()`
+- [x] `src/data/certificate/certificate-prisma.repository.ts`
+- [x] `GetCertificatesUseCase`
+- [x] `CertificateModule` + `CertificateController`
+- [x] `GET /certificate` — sort `validUntil DESC`, `createdAt DESC`
+- [x] `GetCertificatesResponseDto` + Swagger
+- [x] Cache key `portfolio:certificates:list` + TTL `CACHE_TTL_CERTIFICATES`
+
+**Skills**
+
+- [x] `src/domain/skill/` — entity + `SkillRepository.findAll(type?)`
+- [x] `src/data/skill/skill-prisma.repository.ts`
+- [x] `GetSkillsUseCase`
+- [x] `SkillModule` + `SkillController`
+- [x] `GET /skill` — API `type` values: `FRONTEND`, `BACKEND`, `UI_UX`
+- [x] `GET /skill?type=FRONTEND|BACKEND|UI_UX`
+- [x] `GetSkillsResponseDto` + Swagger; `icon` documented as frontend key
+- [x] Cache keys `portfolio:skills:list`, `portfolio:skills:type:{type}`
+
+**App wiring**
+
+- [x] `CertificateModule`, `SkillModule` in `AppModule`
+- [x] `@Controller('certificate')`, `@Controller('skill')`
+
+#### API contract (planned)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/certificate` | All certificates |
+| `GET` | `/skill` | All skills (`icon` = simple name for UI icon map) |
+| `GET` | `/skill?type=FRONTEND` | *(Optional)* Filter by `SkillType` |
+
+**Response shape (draft):**
+
+```json
+// GET /certificate → { "data": [ ... ] }
+{
+  "id": 1,
+  "title": "AWS Certified Cloud Practitioner",
+  "issuer": "Amazon",
+  "url": "https://...",
+  "validUntil": "2026-12-31T00:00:00.000Z",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+
+// GET /skill → { "data": [ ... ] }
+{
+  "id": 1,
+  "title": "React",
+  "icon": "react",
+  "type": "FRONTEND"
+}
+```
+
+#### Architecture notes
+
+```
+GetCertificatesUseCase → CertificateRepository.findAll() → mapper → DTO
+GetSkillsUseCase       → SkillRepository.findAll()       → mapper → DTO
+```
+
+- Mirror **Phase 2 read patterns** (`ProjectModule`, repository token, `ResponseInterceptor` wrapper).
+- **`icon` field:** store and return a short stable string; frontend owns rendering (SVG sprite, `react-icons`, etc.). Do not store ImageKit URLs or file paths in `skills.icon` unless product changes.
+- **`SkillType`:** Prisma enum; map to API consistently (document whether client receives `UI_UX` or `UI/UX`).
+
+#### Technical concerns
+
+- Enum mapping `UI_UX` ↔ DB `"UI/UX"` — test serialization in Swagger and real JSON once implemented.
+- Empty tables are valid — return `{ "data": [] }`, not 404.
+- If certificate/skill schema differs from Prisma file after manual SQL, reconcile schema before coding repositories.
+
+#### Performance considerations
+
+- Small, static-ish datasets — single list query each; Redis optional but cheap win for home/about page.
+- No N+1 (no relations in Phase 6).
+
+#### Future enhancements (within certificates/skills, before Phase 7)
+
+- `GET /certificate/:id` if detail page needs it.
+- Admin write APIs (only if you stop using Supabase UI for data).
+- Sort order column (`sortOrder`) for manual display ordering.
+
+---
+
+### Phase 7 — Cross-entity relations (deferred)
+
+**Goal:** Connect skills (and possibly certificates) to projects and to each other when UX/design is defined.
+
+**Status:** Not started — **do not implement until Phase 6 is live and frontend needs are clear**
+
+#### Ideas to decide later
+
+- **Skills ↔ projects:** junction table (e.g. `project_skills`) or tags on `projects`; expose on `GET /project/:id` or separate endpoint.
+- **Skills ↔ certificates:** only if resume section groups credentials by technology.
+- Whether `SkillType` sections on the frontend are driven only by `type` enum or also by custom grouping.
+
+#### Sub-tasks (placeholder)
+
+- [ ] Product/design: which entities link to which UI sections
+- [ ] Schema migration (new tables / FKs) via Supabase **direct** connection if pooler blocks `db push`
+- [ ] Extend read models + cache invalidation rules
+- [ ] Update frontend coordination table below
+
+---
+
 ## Frontend coordination (design system & motion)
 
 This backend does not implement UI, but the **portfolio remake frontend** will consume these APIs. Track cross-cutting decisions here so API shape supports UX.
@@ -444,6 +576,8 @@ This backend does not implement UI, but the **portfolio remake frontend** will c
 | Image alt / captions | `images.description` exposed in DTOs |
 | Stable deep links | `images.slug` + `GET /image/slug/:slug` |
 | Responsive images | Document ImageKit transformation query params for frontend |
+| Certificates block | `GET /certificate` — title, issuer, url, validUntil |
+| Skills grid / chips | `GET /skill` — `icon` string keys + `type` for section tabs (Frontend / Backend / UI·UX) |
 
 ### Motion / interaction (API-relevant)
 
@@ -453,8 +587,22 @@ This backend does not implement UI, but the **portfolio remake frontend** will c
 | Staggered gallery reveal | Single `GET` with all images preferred over N requests |
 | Optimistic admin edits | `PATCH` returns full updated entity; clear error codes for rollback |
 | Skeleton → content | Low TTFB via cache; consider `Cache-Control` headers later |
+| About page skills | One `GET /skill`; client groups by `type`; resolve `icon` → component locally |
+| Credentials list | One `GET /certificate`; optional sort by `validUntil` on backend |
 
 Update this section when frontend stack (Next.js, etc.) and animation library are chosen.
+
+### Frontend icon map (skills)
+
+Backend returns **names only** in `skills.icon`. Example convention (frontend implementation):
+
+| `icon` value | Frontend resolves to |
+|--------------|----------------------|
+| `react` | React logo component |
+| `nestjs` | NestJS logo component |
+| `typescript` | TypeScript logo component |
+
+Keep names lowercase, kebab-case, no file extensions. Add new rows in Supabase when you add stack entries.
 
 ---
 
@@ -465,6 +613,7 @@ Update this section when frontend stack (Next.js, etc.) and animation library ar
 - [ ] E2E: `GET /project`, create → update → delete project flow
 - [ ] E2E: image CRUD + slug uniqueness
 - [ ] Cache: hit/miss/invalidation behavior
+- [ ] `GET /certificate`, `GET /skill` return expected shapes and cached responses
 
 ---
 
@@ -476,6 +625,8 @@ Update this section when frontend stack (Next.js, etc.) and animation library ar
 | 2026-05-24 | Phase 0–1 done; `GET /project` live; Int PKs; Prisma 6 schema |
 | 2026-05-24 | Phase 2–3 done; Option B multipart upload; full project + image CRUD |
 | 2026-05-24 | Phase 4–5: Upstash cache, CORS, Vercel serverless entry |
+| 2026-05-24 | Phase 6–7 planned: certificates & skills GET APIs; relations deferred |
+| 2026-05-24 | Phase 6 implemented: `GET /certificate`, `GET /skill` |
 
 ### How to update this file (agent / developer)
 
@@ -495,11 +646,17 @@ Update this section when frontend stack (Next.js, etc.) and animation library ar
 4. ~~**Image upload path**~~ — **Option B** (server multipart upload); no admin frontend required.
 5. ~~**Auth for writes**~~ — deferred (not required).
 6. **CORS** — set `CORS_ORIGINS` when frontend URL is known.
+7. ~~**Skills API `type` serialization**~~ — API uses `UI_UX` (Prisma enum name).
+8. **Certificate list sort** — `validUntil DESC` vs `createdAt DESC` (decide in Phase 6).
 
 ---
 
 ## Suggested implementation order (current best strategy)
 
-Core backend phases **0–5 are complete** for the current scope.
+```
+Phase 7 — Skills/projects/certificates relations (when designed)
+```
 
-**Optional next steps:** `file_id` column + ImageKit delete on image remove; global `/api` prefix; observability.
+**Optional parallel / low priority:** `file_id` + ImageKit delete on image remove; global `/api` prefix; observability.
+
+**Next actionable step:** Phase 7 design (junction tables / extended `GET /project/:id`) when frontend needs linked skills or credentials.
