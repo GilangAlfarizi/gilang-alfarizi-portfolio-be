@@ -21,7 +21,7 @@
     "prisma:generate": "prisma generate --schema database/schema.prisma",
     "prisma:pull": "prisma db pull --schema database/schema.prisma",
     "postinstall": "prisma generate --schema database/schema.prisma",
-    "vercel-build": "prisma generate --schema database/schema.prisma && nest build"
+    "vercel-build": "prisma generate --schema database/schema.prisma && tsc && tsc-alias"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
