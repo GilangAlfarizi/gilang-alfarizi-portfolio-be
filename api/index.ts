@@ -3,8 +3,8 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 import express from 'express';
 import type { Request, Response } from 'express';
 
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/bootstrap';
+import { AppModule } from '../dist/app.module';
+import { configureApp } from '../dist/bootstrap';
 
 let cachedServer: express.Express;
 

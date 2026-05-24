@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -21,7 +21,7 @@
     "prisma:generate": "prisma generate --schema database/schema.prisma",
     "prisma:pull": "prisma db pull --schema database/schema.prisma",
     "postinstall": "prisma generate --schema database/schema.prisma",
-    "vercel-build": "prisma generate --schema database/schema.prisma && tsc && tsc-alias"
+    "vercel-build": "prisma generate --schema database/schema.prisma && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
