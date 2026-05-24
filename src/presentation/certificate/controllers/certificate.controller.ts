@@ -1,8 +1,11 @@
-import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { GetCertificatesUseCase } from '@application/usecases/certificate';
 
-import { GetCertificatesResponseDto } from '../dto';
+import {
+  GetCertificatesQueryDto,
+  PaginatedCertificatesResponseDto,
+} from '../dto';
 import { CertificateMapper } from '../mappers/certificate.mapper';
 
 @ApiTags('Certificate')
@@ -10,11 +13,18 @@ import { CertificateMapper } from '../mappers/certificate.mapper';
 export class CertificateController {
   constructor(private readonly getCertificatesUseCase: GetCertificatesUseCase) {}
 
-  @ApiOkResponse({ type: [GetCertificatesResponseDto] })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number, example: 10 })
+  @ApiOkResponse({ type: PaginatedCertificatesResponseDto })
   @HttpCode(HttpStatus.OK)
   @Get()
-  async getCertificates(): Promise<GetCertificatesResponseDto[]> {
-    const certificates = await this.getCertificatesUseCase.execute();
-    return CertificateMapper.toResponseDtoList(certificates);
+  async getCertificates(
+    @Query() query: GetCertificatesQueryDto,
+  ): Promise<PaginatedCertificatesResponseDto> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
+
+    const result = await this.getCertificatesUseCase.execute({ page, pageSize });
+    return CertificateMapper.toPaginatedResponseDto(result);
   }
 }

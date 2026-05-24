@@ -32,13 +32,14 @@ model Image {
 }
 
 model Certificate {
-  id         Int       @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   title      String
   issuer     String?
+  issuedAt   String?  @map("issued_at")
   image      String?
-  validUntil DateTime? @map("valid_until")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  credential String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("certificates")
 }

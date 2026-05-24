@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   CERTIFICATE_REPOSITORY,
-  Certificate,
+  CertificatePaginationParams,
   CertificateRepository,
+  PaginatedCertificates,
 } from '@domain/certificate';
 import { CacheKeys, CacheService } from '@infrastructure/cache';
 
@@ -14,19 +15,21 @@ export class GetCertificatesUseCase {
     private readonly cacheService: CacheService,
   ) {}
 
-  async execute(): Promise<Certificate[]> {
-    const key = CacheKeys.certificatesList();
-    const cached = await this.cacheService.get<Certificate[]>(key);
+  async execute(
+    params: CertificatePaginationParams,
+  ): Promise<PaginatedCertificates> {
+    const key = CacheKeys.certificatesList(params.page, params.pageSize);
+    const cached = await this.cacheService.get<PaginatedCertificates>(key);
     if (cached) {
       return cached;
     }
 
-    const certificates = await this.certificateRepository.findAll();
+    const result = await this.certificateRepository.findPaginated(params);
     await this.cacheService.set(
       key,
-      certificates,
+      result,
       this.cacheService.ttl.certificates,
     );
-    return certificates;
+    return result;
   }
 }

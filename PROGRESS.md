@@ -23,7 +23,7 @@
 | Redis caching (Upstash) | Done | `@upstash/redis`; cache-aside in read use cases |
 | CORS | Done | `CORS_ORIGINS` (mock `http://localhost:3000`) |
 | Vercel deploy | Done | `api/index.ts` + `vercel.json` |
-| Certificate API | Done | `GET /certificate` — read-only; Redis cached |
+| Certificate API | Done | `GET /certificate?page&pageSize` — paginated, `createdAt DESC`; Redis per page |
 | Skills API | Done | `GET /skill` (+ optional `?type=`) — `icon` = frontend key |
 
 ---
@@ -117,8 +117,9 @@ Prisma: use `@map("snake_case")` on fields and `@@map("table_name")` on models w
 | `id` | **Int** (autoincrement) | Primary key |
 | `title` | string | Required |
 | `issuer` | string | Nullable |
-| `url` | string | Nullable — link to credential / verify page |
-| `validUntil` | DateTime | Nullable — `valid_until` |
+| `issuedAt` | DateTime | Nullable — `issued_at` |
+| `image` | string | Nullable — badge / preview image URL |
+| `credential` | string | Nullable — verify / credential link URL |
 | `createdAt` | DateTime | `created_at` |
 | `updatedAt` | DateTime | `updated_at` |
 
@@ -461,9 +462,9 @@ Write: DB → invalidate matching keys (prefix scan or explicit list)
 - [x] `src/data/certificate/certificate-prisma.repository.ts`
 - [x] `GetCertificatesUseCase`
 - [x] `CertificateModule` + `CertificateController`
-- [x] `GET /certificate` — sort `validUntil DESC`, `createdAt DESC`
-- [x] `GetCertificatesResponseDto` + Swagger
-- [x] Cache key `portfolio:certificates:list` + TTL `CACHE_TTL_CERTIFICATES`
+- [x] `GET /certificate` — paginated (`page`, `pageSize`); sort **`createdAt DESC`**
+- [x] `GetCertificatesQueryDto`, `PaginatedCertificatesResponseDto` + Swagger
+- [x] Cache key `portfolio:certificates:list:page:{n}:size:{n}` + TTL `CACHE_TTL_CERTIFICATES`
 
 **Skills**
 
@@ -485,22 +486,41 @@ Write: DB → invalidate matching keys (prefix scan or explicit list)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/certificate` | All certificates |
+| `GET` | `/certificate` | Paginated certificates (`page`, `pageSize`) |
 | `GET` | `/skill` | All skills (`icon` = simple name for UI icon map) |
 | `GET` | `/skill?type=FRONTEND` | *(Optional)* Filter by `SkillType` |
 
-**Response shape (draft):**
+**Query params (`GET /certificate`):**
+
+| Param | Default | Max | Description |
+|-------|---------|-----|-------------|
+| `page` | `1` | — | 1-based page index |
+| `pageSize` | `10` | `100` | Items per page |
+
+**Sort:** `createdAt DESC` (newest first).
+
+**Response shape:**
 
 ```json
-// GET /certificate → { "data": [ ... ] }
+// GET /certificate?page=1&pageSize=10
+// Outer wrapper from ResponseInterceptor: { "data": { ... } }
 {
-  "id": 1,
-  "title": "AWS Certified Cloud Practitioner",
-  "issuer": "Amazon",
-  "url": "https://...",
-  "validUntil": "2026-12-31T00:00:00.000Z",
-  "createdAt": "...",
-  "updatedAt": "..."
+  "data": [
+    {
+      "id": 1,
+      "title": "AWS Certified Cloud Practitioner",
+      "issuer": "Amazon",
+      "issuedAt": "2024-06-01T00:00:00.000Z",
+      "image": "https://...",
+      "credential": "https://www.credly.com/badges/...",
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "page": 1,
+  "pageSize": 10,
+  "total": 25,
+  "totalPages": 3
 }
 
 // GET /skill → { "data": [ ... ] }
@@ -515,7 +535,7 @@ Write: DB → invalidate matching keys (prefix scan or explicit list)
 #### Architecture notes
 
 ```
-GetCertificatesUseCase → CertificateRepository.findAll() → mapper → DTO
+GetCertificatesUseCase → CertificateRepository.findPaginated({ page, pageSize }) → mapper → DTO
 GetSkillsUseCase       → SkillRepository.findAll()       → mapper → DTO
 ```
 
@@ -576,7 +596,7 @@ This backend does not implement UI, but the **portfolio remake frontend** will c
 | Image alt / captions | `images.description` exposed in DTOs |
 | Stable deep links | `images.slug` + `GET /image/slug/:slug` |
 | Responsive images | Document ImageKit transformation query params for frontend |
-| Certificates block | `GET /certificate` — title, issuer, url, validUntil |
+| Certificates block | `GET /certificate?page&pageSize` — `issuedAt`, `image`, `credential`, issuer |
 | Skills grid / chips | `GET /skill` — `icon` string keys + `type` for section tabs (Frontend / Backend / UI·UX) |
 
 ### Motion / interaction (API-relevant)
@@ -588,7 +608,7 @@ This backend does not implement UI, but the **portfolio remake frontend** will c
 | Optimistic admin edits | `PATCH` returns full updated entity; clear error codes for rollback |
 | Skeleton → content | Low TTFB via cache; consider `Cache-Control` headers later |
 | About page skills | One `GET /skill`; client groups by `type`; resolve `icon` → component locally |
-| Credentials list | One `GET /certificate`; optional sort by `validUntil` on backend |
+| Credentials list | Paginated `GET /certificate`; load more via `page` increment |
 
 Update this section when frontend stack (Next.js, etc.) and animation library are chosen.
 
@@ -627,6 +647,8 @@ Keep names lowercase, kebab-case, no file extensions. Add new rows in Supabase w
 | 2026-05-24 | Phase 4–5: Upstash cache, CORS, Vercel serverless entry |
 | 2026-05-24 | Phase 6–7 planned: certificates & skills GET APIs; relations deferred |
 | 2026-05-24 | Phase 6 implemented: `GET /certificate`, `GET /skill` |
+| 2026-05-24 | Certificates: pagination (`page`, `pageSize`), sort `createdAt DESC` |
+| 2026-05-24 | Certificate schema: `issuedAt`, `credential`; removed `validUntil` |
 
 ### How to update this file (agent / developer)
 
@@ -647,7 +669,7 @@ Keep names lowercase, kebab-case, no file extensions. Add new rows in Supabase w
 5. ~~**Auth for writes**~~ — deferred (not required).
 6. **CORS** — set `CORS_ORIGINS` when frontend URL is known.
 7. ~~**Skills API `type` serialization**~~ — API uses `UI_UX` (Prisma enum name).
-8. **Certificate list sort** — `validUntil DESC` vs `createdAt DESC` (decide in Phase 6).
+8. ~~**Certificate list sort**~~ — **`createdAt DESC`**; pagination via `page` / `pageSize`.
 
 ---
 

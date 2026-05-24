@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Certificate, CertificateRepository } from '@domain/certificate';
+import {
+  CertificatePaginationParams,
+  CertificateRepository,
+  PaginatedCertificates,
+} from '@domain/certificate';
 import { PrismaService } from '@infrastructure/prisma';
 
 import { CertificateMapper } from './certificate.mapper';
@@ -8,10 +12,27 @@ import { CertificateMapper } from './certificate.mapper';
 export class CertificatePrismaRepository implements CertificateRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<Certificate[]> {
-    const rows = await this.prisma.certificate.findMany({
-      orderBy: [{ validUntil: 'desc' }, { createdAt: 'desc' }],
-    });
-    return rows.map(CertificateMapper.toDomain);
+  async findPaginated(
+    params: CertificatePaginationParams,
+  ): Promise<PaginatedCertificates> {
+    const { page, pageSize } = params;
+    const skip = (page - 1) * pageSize;
+
+    const [rows, total] = await Promise.all([
+      this.prisma.certificate.findMany({
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.certificate.count(),
+    ]);
+
+    return {
+      data: rows.map(CertificateMapper.toDomain),
+      page,
+      pageSize,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
+    };
   }
 }

@@ -1,7 +1,10 @@
-import { Certificate } from './certificate.entity';
+import {
+  CertificatePaginationParams,
+  PaginatedCertificates,
+} from './certificate-pagination';
 
 export const CERTIFICATE_REPOSITORY = Symbol('CERTIFICATE_REPOSITORY');
 
 export interface CertificateRepository {
-  findAll(): Promise<Certificate[]>;
+  findPaginated(params: CertificatePaginationParams): Promise<PaginatedCertificates>;
 }
