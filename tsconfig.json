@@ -9,7 +9,7 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./src",
+    
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -18,13 +18,14 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@application/*": ["./application/*"],
-      "@data/*": ["./data/*"],
+      "@application/*": ["./src/application/*"],
+      "@data/*": ["./src/data/*"],
       "@database": ["./database"],
-      "@database/*": ["./database/*"],
-      "@domain/*": ["./domain/*"],
-      "@infrastructure/*": ["./infrastructure/*"],
-      "@presentation/*": ["./presentation/*"]
+      "@database/*": ["./src/database/*"],
+      "@domain/*": ["./src/domain/*"],
+      "@infrastructure/*": ["./src/infrastructure/*"],
+      "@presentation/*": ["./src/presentation/*"],
+      "*": ["./src/*"]
     }
   }
 }
