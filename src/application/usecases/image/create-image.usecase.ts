@@ -8,7 +8,7 @@ import { Inject, Injectable } from '@nestjs/common';
 export type CreateImageCommand = {
   projectId: number;
   slug: string;
-  description?: string | null;
+  description: string;
   file: Buffer;
   fileName: string;
 };
@@ -42,7 +42,7 @@ export class CreateImageUseCase {
     try {
       const image = await this.imageRepository.create({
         slug,
-        description: description ?? null,
+        description: description,
         projectId,
         image: upload.url,
       });

@@ -8,7 +8,7 @@ import {
 } from '@domain/project';
 import { PrismaService } from '@infrastructure/prisma';
 
-import { ProjectMapper } from './project.mapper';
+import { ProjectMapper, ProjectWithImages } from './project.mapper';
 
 @Injectable()
 export class ProjectPrismaRepository implements ProjectRepository {
@@ -40,7 +40,9 @@ export class ProjectPrismaRepository implements ProjectRepository {
         images: { orderBy: { createdAt: 'asc' } },
       },
     });
-    return project ? ProjectMapper.toDomain(project) : null;
+    return project
+      ? ProjectMapper.toDomain(project as ProjectWithImages)
+      : null;
   }
 
   async exists(id: number): Promise<boolean> {
@@ -52,11 +54,11 @@ export class ProjectPrismaRepository implements ProjectRepository {
     const project = await this.prisma.project.create({
       data: {
         title: data.title,
-        description: data.description ?? null,
+        description: data.description ?? '',
       },
       include: { images: true },
     });
-    return ProjectMapper.toDomain(project);
+    return ProjectMapper.toDomainWithoutImages(project);
   }
 
   async update(id: number, data: UpdateProjectInput): Promise<Project> {
@@ -65,14 +67,14 @@ export class ProjectPrismaRepository implements ProjectRepository {
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
         ...(data.description !== undefined
-          ? { description: data.description }
+          ? { description: data.description ?? '' }
           : {}),
       },
       include: {
         images: { orderBy: { createdAt: 'asc' } },
       },
     });
-    return ProjectMapper.toDomain(project);
+    return ProjectMapper.toDomain(project as ProjectWithImages);
   }
 
   async delete(id: number): Promise<void> {

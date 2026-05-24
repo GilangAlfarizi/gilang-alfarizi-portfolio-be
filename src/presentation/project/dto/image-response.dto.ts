@@ -10,8 +10,8 @@ export class ImageResponseDto {
   @ApiProperty({ example: 'https://ik.imagekit.io/example/Works/GWF-1.png' })
   image: string;
 
-  @ApiPropertyOptional({ example: 'Screenshot of homepage' })
-  description: string | null;
+  @ApiProperty({ example: 'Screenshot of homepage' })
+  description: string;
 
   @ApiProperty({ example: 1 })
   projectId: number;

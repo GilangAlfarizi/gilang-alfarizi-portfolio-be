@@ -46,7 +46,7 @@ export class ImagePrismaRepository implements ImageRepository {
       data: {
         slug: data.slug,
         image: data.image,
-        description: data.description ?? null,
+        description: data.description,
         projectId: data.projectId,
       },
     });
@@ -59,7 +59,7 @@ export class ImagePrismaRepository implements ImageRepository {
       data: {
         ...(data.slug !== undefined ? { slug: data.slug } : {}),
         ...(data.description !== undefined
-          ? { description: data.description }
+          ? { description: data.description ?? '' }
           : {}),
       },
     });

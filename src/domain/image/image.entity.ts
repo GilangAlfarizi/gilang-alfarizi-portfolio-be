@@ -2,7 +2,7 @@ export type Image = {
   id: number;
   slug: string;
   image: string;
-  description: string | null;
+  description: string;
   projectId: number;
   createdAt: Date;
   updatedAt: Date;

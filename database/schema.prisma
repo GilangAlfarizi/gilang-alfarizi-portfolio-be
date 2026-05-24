@@ -10,7 +10,7 @@ datasource db {
 model Project {
   id          Int      @id @default(autoincrement())
   title       String
-  description String?
+  description String
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   images      Image[]
@@ -22,11 +22,38 @@ model Image {
   id          Int      @id @default(autoincrement())
   slug        String
   image       String
-  description String?
+  description String
   projectId   Int      @map("project_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project  @relation(fields: [projectId], references: [id])
 
   @@map("images")
+}
+
+model Certificate {
+  id         Int       @id @default(autoincrement())
+  title      String
+  issuer     String?
+  url        String?
+  validUntil DateTime? @map("valid_until")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("certificates")
+}
+
+enum SkillType {
+  FRONTEND
+  BACKEND
+  UI_UX    @map("UI/UX") // Maps the database value to your UI/UX string format if needed, or keep it standard
+}
+
+model Skill {
+  id    Int       @id @default(autoincrement())
+  title String
+  icon  String
+  type  SkillType
+
+  @@map("skills")
 }

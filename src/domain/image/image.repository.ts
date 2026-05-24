@@ -5,7 +5,7 @@ export const IMAGE_REPOSITORY = Symbol('IMAGE_REPOSITORY');
 export type CreateImageInput = {
   slug: string;
   image: string;
-  description?: string | null;
+  description: string;
   projectId: number;
 };
 

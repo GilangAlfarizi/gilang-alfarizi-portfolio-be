@@ -1,7 +1,7 @@
 # Portfolio v2 Backend — Progress & Roadmap
 
 > **Living document.** Revisit and update this file whenever architecture decisions change, phases complete, or new requirements appear.  
-> **Last reviewed:** 2026-05-24 (Phase 4–5: Upstash cache, CORS, Vercel)
+> **Last reviewed:** 2026-05-24 (Phase 6 planned: certificates & skills read APIs)
 
 ---
 
@@ -35,6 +35,8 @@ Build a **portfolio CMS-style backend** that:
 3. Handles **image uploads** through **ImageKit** (URLs stored in DB).
 4. Uses **Redis** to cache hot read responses and invalidate on writes.
 5. Follows **NestJS clean architecture** so domain rules stay independent of frameworks.
+6. Exposes **certificates** and **skills** for the about/resume sections of the portfolio frontend.
+7. *(Later)* Relate skills to projects and certificates when product design is ready.
 
 ---
 
@@ -106,7 +108,34 @@ Prisma: use `@map("snake_case")` on fields and `@@map("table_name")` on models w
 
 **Relation:** `Project` 1 — N `Image`.
 
-**Prisma schema:** `database/schema.prisma` — pinned to **Prisma 6** (v7 breaks `url` in datasource for this workflow).
+#### `certificates`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | **Int** (autoincrement) | Primary key |
+| `title` | string | Required |
+| `issuer` | string | Nullable |
+| `url` | string | Nullable — link to credential / verify page |
+| `validUntil` | DateTime | Nullable — `valid_until` |
+| `createdAt` | DateTime | `created_at` |
+| `updatedAt` | DateTime | `updated_at` |
+
+**Data entry:** rows inserted manually in Supabase (no write API in Phase 6).
+
+#### `skills`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | **Int** (autoincrement) | Primary key |
+| `title` | string | Display name (e.g. `React`, `NestJS`) |
+| `icon` | string | **Simple icon identifier** for the frontend — not a URL. Example values: `react`, `typescript`, `nestjs`. Frontend maps this string to an icon set (Lucide, Simple Icons, custom SVG map, etc.) |
+| `type` | `SkillType` enum | `FRONTEND` \| `BACKEND` \| `UI_UX` (DB value `UI/UX` via `@map`) |
+
+**Data entry:** rows inserted manually in Supabase (no write API in Phase 6).
+
+**No relations yet** to `projects` or `certificates` — see Phase 7.
+
+**Prisma schema:** `database/schema.prisma` — pinned to **Prisma 6** (v7 breaks `url` in datasource for this workflow). Models `Certificate` and `Skill` already defined; run `npx prisma generate` after schema changes.
 
 ### Read-model decision (list projects)
 
@@ -128,6 +157,8 @@ Prisma: use `@map("snake_case")` on fields and `@@map("table_name")` on models w
 | `CACHE_TTL_PROJECTS_LIST` | No | Default `300` (seconds) |
 | `CACHE_TTL_PROJECT_DETAIL` | No | Default `600` |
 | `CACHE_TTL_IMAGES` | No | Default `300` |
+| `CACHE_TTL_CERTIFICATES` | No | Phase 6 — default `600` (planned) |
+| `CACHE_TTL_SKILLS` | No | Phase 6 — default `600` (planned) |
 | `CORS_ORIGINS` | No | Comma-separated; default `http://localhost:3000` — **set to deployed frontend URL** |
 
 Copy `.env.example` → `.env` locally; add the same keys in the Vercel project dashboard.

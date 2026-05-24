@@ -3,7 +3,7 @@ import { Image as PrismaImage, Project as PrismaProject } from '@prisma/client';
 
 import { ImageMapper } from '../image/image.mapper';
 
-type ProjectWithImages = PrismaProject & { images: PrismaImage[] };
+export type ProjectWithImages = PrismaProject & { images: PrismaImage[] };
 
 export class ProjectMapper {
   static toDomain(row: ProjectWithImages): Project {
