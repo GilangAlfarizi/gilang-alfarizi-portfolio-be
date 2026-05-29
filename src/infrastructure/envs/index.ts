@@ -17,7 +17,7 @@ class Envs {
 }
 
 const parseCorsOrigins = (value?: string): string[] => {
-  const raw = value?.trim() || 'http://localhost:3000';
+  const raw = value?.trim() || 'http://localhost:5173';
   return raw
     .split(',')
     .map((origin) => origin.trim())
