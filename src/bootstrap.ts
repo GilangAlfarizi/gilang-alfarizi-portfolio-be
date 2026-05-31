@@ -5,12 +5,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 export async function configureApp(app: INestApplication): Promise<void> {
   const env = envsConfig();
 
-  // app.enableCors({
-  //   origin: env.corsOrigins,
-  //   credentials: true,
-  //   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  //   allowedHeaders: ['Content-Type', 'Authorization', 'x-trace-id'],
-  // });
+  app.enableCors({
+    origin: env.corsOrigins,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-trace-id'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
